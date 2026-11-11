@@ -1,5 +1,12 @@
 #include "ros2_sport_client.h"
 
+/*
+ * SportClient 实现：把“函数调用”转成 unitree_api::msg::Request
+ * - 无参数动作：只写 api_id
+ * - 有参数动作：再把 JSON 写入 req.parameter
+ * 调用方负责把 req 发布到 /api/sport/request
+ */
+
 void SportClient::Damp(unitree_api::msg::Request &req)
 {
     req.header.identity.api_id = ROBOT_SPORT_API_ID_DAMP;

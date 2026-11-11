@@ -1,3 +1,11 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+监控 img/pred 新图片，用 YOLOv5 做目标检测：
+- 检测到 package 且置信度达标 → 画框后存到 img/true
+- 否则 → 存到 img/false
+前端控制台会读取 img/true 做“识别成功截图”展示。
+"""
 import os
 import shutil
 import time
@@ -7,10 +15,11 @@ from pathlib import Path
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-WATCH_DIR    = Path("./img/pred").expanduser()
-DETECTED_DIR = Path("./img/true").absolute()
-EMPTY_DIR    = Path("./img/false").absolute()
-WEIGHTS      = Path("./model/best.pt")
+# --- 路径与检测参数 ---
+WATCH_DIR    = Path("./img/pred").expanduser()   # 待检测输入
+DETECTED_DIR = Path("./img/true").absolute()    # 命中目标
+EMPTY_DIR    = Path("./img/false").absolute()   # 未命中
+WEIGHTS      = Path("./model/best.pt")          # 自定义权重
 IMG_SIZE     = 640
 CONF_THRES   = 0.35
 IOU_THRES    = 0.45
@@ -18,7 +27,7 @@ DEVICE       = ''
 
 DETECTED_DIR.mkdir(exist_ok=True, parents=True)
 EMPTY_DIR.mkdir(exist_ok=True, parents=True)
-print("DIR EXIST.")
+print("检测目录已就绪。")
 
 try:
     model = torch.hub.load('./yolov5', 'custom',

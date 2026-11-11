@@ -8,8 +8,17 @@
 #include <sensor_msgs/msg/joy.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 
-// rclcpp::Subscription<unitree_go::msg::SportModeState>::SharedPtr state_suber;
-// rclcpp::Subscription<geometry_msgs::msg::TwistStamped>::SharedPtr vel_cmd_suber;
+/*
+ * 手柄速度 → Unitree 运动 API 转发节点
+ *
+ * 订阅：/joy（手柄）
+ * 发布：/api/sport/request（unitree_api/msg/Request）
+ *
+ * 核心调用：
+ *   sport_req.Move(req, vx, vy, vyaw);
+ *   req_puber->publish(req);
+ */
+
 rclcpp::Publisher<unitree_api::msg::Request>::SharedPtr req_puber;
 rclcpp::Subscription<sensor_msgs::msg::Joy>::SharedPtr joy_suber;
 
@@ -31,32 +40,25 @@ float joySpeedYaw = 0;
 float joySpeedLateral = 0;
 
 float PI = 3.141592653589397;
-float maxSpeedYaw = 1.4;
-float maxSpeedLateral = 0.5;
+float maxSpeedYaw = 1.4;       // 最大转向速度
+float maxSpeedLateral = 0.5;   // 最大横向速度
 
-// void vel_cmd_callback(const geometry_msgs::msg::TwistStamped::SharedPtr msg)
-// {
-//     vx = msg->twist.linear.x;
-//     vyaw = msg->twist.angular.z;
-//     new_cmd = true;
-// }
-
+// 手柄回调：把摇杆轴映射成 vx / vy / vyaw
 void joystickHandler(const sensor_msgs::msg::Joy::ConstSharedPtr joy)
 {
-//   joyTime = nh->now().seconds();
   joySpeedRaw = joy->axes[4];
   joySpeed = joySpeedRaw;
   joySpeedLateral = joy->axes[3] * maxSpeedLateral;
-
   joySpeedYaw = joy->axes[0] * maxSpeedYaw;
 
   if (joySpeed > 1.0) joySpeed = 1.0;
   if (joySpeed < -1.0) joySpeed = -1.0;
   if (joySpeedLateral > maxSpeedLateral) joySpeedLateral = maxSpeedLateral;
   if (joySpeedLateral < -maxSpeedLateral) joySpeedLateral = -maxSpeedLateral;
-  
+
   if (joy->axes[4] == 0) joySpeed = 0;
 
+  // 轴5：是否启用避障检查（保留字段，当前主循环未深度使用）
   if (joy->axes[5] > -0.1) {
     checkObstacle = true;
   } else {
@@ -68,48 +70,27 @@ void joystickHandler(const sensor_msgs::msg::Joy::ConstSharedPtr joy)
 
 int main(int argc, char **argv)
 {
-    rclcpp::init(argc, argv);                             // Initialize rclcpp
-    rclcpp::TimerBase::SharedPtr timer_;                  // Create a timer callback object to send cmd in time intervals
-    nh = rclcpp::Node::make_shared("vel_cmd_repub"); // Create a ROS2 node and make share with low_level_cmd_sender class
+    rclcpp::init(argc, argv);
+    nh = rclcpp::Node::make_shared("vel_cmd_repub");
 
-    // state_suber = nh->create_subscription<unitree_go::msg::SportModeState>("sportmodestate", 10);
-    
-    // vel_cmd_suber = nh->create_subscription<geometry_msgs::msg::TwistStamped>("/cmd_vel", 10, vel_cmd_callback);
-
+    // 订阅手柄
     joy_suber = nh->create_subscription<sensor_msgs::msg::Joy>("/joy", 5, joystickHandler);
+    // 发布到 Unitree 高层运动接口
     req_puber = nh->create_publisher<unitree_api::msg::Request>("/api/sport/request", 10);
 
-    rclcpp::Rate rate(100); // Set the frequency of the timer callback
+    rclcpp::Rate rate(100);  // 100 Hz 发送
     bool status = rclcpp::ok();
-    while (status){
+    while (status) {
         rclcpp::spin_some(nh);
         vx = joySpeed;
         vyaw = joySpeedYaw;
         vy = joySpeedLateral;
-        std::cout << "vx: " << vx << ",vy: " << vy << ", vyaw:" << vyaw << std::endl;
-        
+        std::cout << "vx: " << vx << ", vy: " << vy << ", vyaw: " << vyaw << std::endl;
+
+        // 填充并发布 Move 请求（api_id=1008）
         sport_req.Move(req, vx, vy, vyaw);
         req_puber->publish(req);
-        
-        //if (new_cmd)
-        //{
-        //    sport_req.Move(req, vx, 0, vyaw);
-        //    req_puber->publish(req);
-        //    new_cmd = false;
-        //    count_down = 5;
-        //}
-        //else
-        //{
-        //    if (count_down > 0){
-        //        count_down--;
-        //        sport_req.Move(req, vx, 0, vyaw);
-        //        req_puber->publish(req);
-        //    }
-        //    else{
-        //        sport_req.Move(req, 0, 0, 0);
-        //        req_puber->publish(req);
-        //    }
-        // }
+
         rate.sleep();
         status = rclcpp::ok();
     }

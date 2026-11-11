@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+交互式路径规划工具：
+1. 读取 map.yaml 地图
+2. 用鼠标设置航向点（位置+朝向）
+3. Theta* 规划路径，生成 turn/walk 指令
+4. 保存为 commands.yaml，供 path_simulate / path_runner 使用
+"""
 import os, sys, math, yaml, cv2, numpy as np
 from heapq import heappop, heappush
 
 # -------------------- 参数 --------------------
-INFLATION_RADIUS = 3
-TARGET_PIX       = 900
+INFLATION_RADIUS = 3   # 障碍膨胀半径（像素）
+TARGET_PIX       = 900 # 显示窗口最长边像素
 # --------------------------------------------
 
 # -------------------- Theta* 任意角度规划 --------------------

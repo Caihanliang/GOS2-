@@ -96,15 +96,15 @@ def replay(meta, img, res, origin):
         cmd_info = current_state['cmd']
         val_info = current_state['val']
         if cmd_info == 'turn':
-            status_text = f"Action: Turn ({math.degrees(val_info):+.1f} deg)"
+            status_text = f"动作: 转向 ({math.degrees(val_info):+.1f} 度)"
         elif cmd_info == 'walk':
-            status_text = f"Action: Walk ({val_info:.2f} m)"
+            status_text = f"动作: 直行 ({val_info:.2f} 米)"
         else:
-            status_text = "Action: Start"
+            status_text = "动作: 起点"
             
-        full_info = f"Step {idx}/{len(history)-1} | {status_text} | Pos:({cx:.2f}, {cy:.2f}) Yaw:{math.degrees(cyaw):.1f}"
+        full_info = f"步骤 {idx}/{len(history)-1} | {status_text} | 位置:({cx:.2f}, {cy:.2f}) 航向:{math.degrees(cyaw):.1f}"
         cv2.putText(show, full_info, (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-        cv2.imshow('Replay Simulator', show)
+        cv2.imshow('路径仿真回放', show)
 
         # 5. 按键控制
         key = cv2.waitKey(int(STEP_TIME * 1000)) & 0xFF

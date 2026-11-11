@@ -12,7 +12,7 @@
 #include <algorithm>
 #include <array>
 
-// For real robot
+// 真机运动控制：Unitree Request + SportClient
 #include "unitree_api/msg/request.hpp"
 #include "common/ros2_sport_client.h"
 
@@ -76,15 +76,15 @@ private:
         odom_msg.header.frame_id = t.header.frame_id;
         odom_msg.child_frame_id = t.child_frame_id;
         odom_msg.pose.pose = msg->pose;
-        // twist默认为0
+        // twist 暂未填充，默认为 0
         odom_pub_->publish(odom_msg);
     }
 
-    // 处理速度命令
+    // 处理速度命令：把 /cmd_vel 转成运动服务 Move(api_id=1008)
     void handleVelocity(const geometry_msgs::msg::Twist::SharedPtr msg) {
-        // 直接转发速度命令
         unitree_api::msg::Request req;
-        sport_client_->Move(req, 
+        // 按接口文档填充 Request，再发到 /api/sport/request
+        sport_client_->Move(req,
                           msg->linear.x,
                           msg->linear.y,
                           msg->angular.z);

@@ -62,8 +62,7 @@ PointCloudToLaserScanNode::PointCloudToLaserScanNode(const rclcpp::NodeOptions &
 {
   target_frame_ = this->declare_parameter("target_frame", "");
   tolerance_ = this->declare_parameter("transform_tolerance", 0.01);
-  // TODO(hidmic): adjust default input queue size based on actual concurrency levels
-  // achievable by the associated executor
+  // 输入队列大小：默认按硬件并发数设置（可按执行器并发能力再调）
   input_queue_size_ = this->declare_parameter(
     "queue_size", static_cast<int>(std::thread::hardware_concurrency()));
   min_height_ = this->declare_parameter("min_height", std::numeric_limits<double>::min());
@@ -88,7 +87,7 @@ PointCloudToLaserScanNode::PointCloudToLaserScanNode(const rclcpp::NodeOptions &
   );
 
   using std::placeholders::_1;
-  // if pointcloud target frame specified, we need to filter by transform availability
+  // 若指定了目标坐标系，需要等 TF 可用后再处理点云
   if (!target_frame_.empty()) {
     tf2_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
     auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
@@ -101,7 +100,7 @@ PointCloudToLaserScanNode::PointCloudToLaserScanNode(const rclcpp::NodeOptions &
       this->get_node_clock_interface());
     message_filter_->registerCallback(
       std::bind(&PointCloudToLaserScanNode::cloudCallback, this, _1));
-  } else {  // otherwise setup direct subscription
+  } else {  // 未指定目标坐标系：直接订阅点云
     sub_.registerCallback(std::bind(&PointCloudToLaserScanNode::cloudCallback, this, _1));
   }
 
@@ -174,31 +173,31 @@ void PointCloudToLaserScanNode::cloudCallback(
   scan_msg->range_min = range_min_;
   scan_msg->range_max = range_max_;
 
-  // determine amount of rays to create
+  // 计算激光扫描射线数量
   uint32_t ranges_size = std::ceil(
     (scan_msg->angle_max - scan_msg->angle_min) / scan_msg->angle_increment);
 
-  // determine if laserscan rays with no obstacle data will evaluate to infinity or max_range
+  // 无障碍物时：用无穷大，或用 max_range + epsilon
   if (use_inf_) {
     scan_msg->ranges.assign(ranges_size, std::numeric_limits<double>::infinity());
   } else {
     scan_msg->ranges.assign(ranges_size, scan_msg->range_max + inf_epsilon_);
   }
 
-  // Transform cloud if necessary
+  // 如有需要，先把点云变换到目标坐标系
   if (scan_msg->header.frame_id != cloud_msg->header.frame_id) {
-    std::cout << "Transforming point cloud from " << cloud_msg->header.frame_id << " to " << scan_msg->header.frame_id << std::endl;
+    std::cout << "正在变换点云: " << cloud_msg->header.frame_id << " -> " << scan_msg->header.frame_id << std::endl;
     try {
       auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>();
       tf2_->transform(*cloud_msg, *cloud, target_frame_, tf2::durationFromSec(tolerance_));
       cloud_msg = cloud;
     } catch (tf2::TransformException & ex) {
-      RCLCPP_ERROR_STREAM(this->get_logger(), "Transform failure: " << ex.what());
+      RCLCPP_ERROR_STREAM(this->get_logger(), "TF 变换失败: " << ex.what());
       return;
     }
   }
 
-  // Iterate through pointcloud
+  // 遍历点云，投影到 LaserScan
   for (sensor_msgs::PointCloud2ConstIterator<float> iter_x(*cloud_msg, "x"),
     iter_y(*cloud_msg, "y"), iter_z(*cloud_msg, "z");
     iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z)
@@ -206,7 +205,7 @@ void PointCloudToLaserScanNode::cloudCallback(
     if (std::isnan(*iter_x) || std::isnan(*iter_y) || std::isnan(*iter_z)) {
       RCLCPP_DEBUG(
         this->get_logger(),
-        "rejected for nan in point(%f, %f, %f)\n",
+        "丢弃含 NaN 的点(%f, %f, %f)\n",
         *iter_x, *iter_y, *iter_z);
       continue;
     }
@@ -214,7 +213,7 @@ void PointCloudToLaserScanNode::cloudCallback(
     if (*iter_z > max_height_ || *iter_z < min_height_) {
       RCLCPP_DEBUG(
         this->get_logger(),
-        "rejected for height %f not in range (%f, %f)\n",
+        "丢弃高度 %f 不在范围 (%f, %f) 内的点\n",
         *iter_z, min_height_, max_height_);
       continue;
     }

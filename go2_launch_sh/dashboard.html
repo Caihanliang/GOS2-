@@ -163,7 +163,7 @@
   <h1>Go2 控制面板</h1>
 
   <div class="panel">
-    <!-- ... 按钮部分保持不变 ... -->
+    <!-- 四个任务按钮：对应 server.py 的 /start/1..4 -->
     <button id="btnMapping" class="btn-blue"><i class="fas fa-map"></i>启动建图</button>
     <button id="btnPlanning" class="btn-green"><i class="fas fa-route"></i>规划路线</button>
     <button id="btnExecute" class="btn-red"><i class="fas fa-play-circle"></i>启动识别</button>
@@ -173,18 +173,18 @@
   <div class="gallery-container">
     <h2><i class="fas fa-camera-retro"></i> 识别成功截图</h2>
     <div class="image-gallery" id="imageGallery">
-      <!-- 图片将由 JavaScript 动态插入这里 -->
+      <!-- JS 动态插入识别成功图片 -->
     </div>
   </div>
 
-  <!-- --- 新增：Lightbox 的 HTML 结构 --- -->
+  <!-- 点击缩略图后的大图预览层 -->
   <div id="lightbox" class="lightbox-overlay">
     <span class="close-btn" id="closeBtn">&times;</span>
     <img class="lightbox-content" id="lightboxImg">
   </div>
-  <!-- --------------------------------- -->
 
   <script>
+    // 后端 Flask 地址（server.py 默认 5000）
     const apiBase = "http://localhost:5000";
 
     const buttons = [
@@ -196,16 +196,15 @@
     
     const gallery = document.getElementById("imageGallery");
 
-    // --- 新增：获取 Lightbox 相关元素 ---
+    // 大图预览相关元素
     const lightbox = document.getElementById('lightbox');
     const lightboxImg = document.getElementById('lightboxImg');
     const closeBtn = document.getElementById('closeBtn');
-    // ---------------------------------
 
     const defaultTexts = buttons.map(btn => btn.innerText);
 
     function updateStatus() {
-        // ... 此函数保持不变 ...
+        // 轮询后端脚本运行状态，控制按钮禁用/“运行中...”
         fetch(`${apiBase}/status`)
         .then(r => r.json())
         .then(data => {

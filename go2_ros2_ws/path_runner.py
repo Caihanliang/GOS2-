@@ -10,19 +10,16 @@ import numpy as np
 from go2_webrtc_driver.webrtc_driver import Go2WebRTCConnection, WebRTCConnectionMethod
 from go2_webrtc_driver.constants import RTC_TOPIC, SPORT_CMD
 
-# --- 配置参数 ---
-WALK_SPEED_MPS = 1.0
-TURN_SPEED_RADPS = 1.4
-COMMAND_FREQUENCY_HZ = 20
-Kp_YAW = 1.5
-DISTANCE_TOLERANCE_M = 0.05
-ANGLE_TOLERANCE_RAD = 0.05
-ACTION_TIMEOUT_S = 20
+# --- 控制参数 ---
+WALK_SPEED_MPS = 1.0          # 直行速度 (m/s)
+TURN_SPEED_RADPS = 1.4        # 转向角速度 (rad/s)
+COMMAND_FREQUENCY_HZ = 20     # 控制指令发送频率
+Kp_YAW = 1.5                  # 直行时航向纠偏增益
+DISTANCE_TOLERANCE_M = 0.05   # 直行到位阈值
+ANGLE_TOLERANCE_RAD = 0.05    # 转向到位阈值
+ACTION_TIMEOUT_S = 20         # 单步动作超时
 
-# --- 日志 ---
-# logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# --- 全局状态 ---
+# --- 全局机器人状态（由 WebRTC 状态话题回调更新）---
 robot_state = {
     "position": np.array([0.0, 0.0, 0.0]),
     "yaw": 0.0,
@@ -33,9 +30,14 @@ first_message_received = False
 
 # --- 工具函数 ---
 def normalize_angle(angle):
+    """角度归一化到 [-pi, pi]"""
     return (angle + np.pi) % (2 * np.pi) - np.pi
 
 async def send_move_command(conn, vx=0.0, vy=0.0, vyaw=0.0):
+    """
+    通过 WebRTC 发送 Move（等价于运动服务 api_id=Move）。
+    注意：这是 WebRTC 通道，不是 ROS 话题 /api/sport/request。
+    """
     await conn.datachannel.pub_sub.publish_request_new(
         RTC_TOPIC["SPORT_MOD"],
         {"api_id": SPORT_CMD["Move"], "parameter": {"x": vx, "y": vy, "z": vyaw}},

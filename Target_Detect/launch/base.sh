@@ -1,15 +1,14 @@
 #!/bin/bash
+set -e
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+PYTHON=python3
 
-PYTHON=/home/lxc/anaconda3/envs/target_detect/bin/python
+mkdir -p "$ROOT/Target_Detect/img/pred" \
+         "$ROOT/Target_Detect/img/true" \
+         "$ROOT/Target_Detect/img/false"
 
-# 打开新终端运行第一个脚本
-# gnome-terminal -- bash -c "$PYTHON '/home/lxc/Target_Detect/monitor_png.py'; exec bash"
+# 目标检测监控（需准备 Target_Detect/model/best.pt）
+$PYTHON "$ROOT/Target_Detect/monitor_detect_target.py"
 
-# 打开新终端运行第二个脚本
-gnome-terminal -- bash -c "$PYTHON '/home/lxc/Target_Detect/monitor_detect_target.py'; exec bash"
-
-# 打开新终端运行 go2_video_client
-# gnome-terminal -- bash -c "~/unitree_sdk2/build/bin/go2_video_client enx0826ae38e743; exec bash"
-
-gnome-terminal -- bash -c "'/home/lxc/anaconda3/envs/video/bin/python' '/home/lxc/go2_ros2_ws/display_video.py'; exec bash"
-
+# 有真机视频流时再启用：
+# $PYTHON "$ROOT/go2_ros2_ws/display_video.py"

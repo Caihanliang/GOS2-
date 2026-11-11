@@ -1,5 +1,6 @@
 #!/bin/bash
-cd ~/go2_ros2_ws
+set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# 规划路线
-/home/lxc/anaconda3/envs/video/bin/python /home/lxc/go2_ros2_ws/path_planner.py map.yaml 
+cd "$ROOT/go2_ros2_ws"
+python3 path_planner.py map.yaml

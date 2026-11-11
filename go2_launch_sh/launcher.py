@@ -3,12 +3,13 @@ import tkinter as tk
 import subprocess
 import os
 
-# 四个脚本绝对路径，按你实际位置改
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 SCRIPTS = [
-    "/home/lxc/go2_launch_sh/1_slam.sh",
-    "/home/lxc/go2_launch_sh/2_path_plan.sh",
-    "/home/lxc/go2_launch_sh/3_path_run.sh",
-    "/home/lxc/go2_launch_sh/4_target_detect.sh",
+    os.path.join(BASE_DIR, "1_slam.sh"),
+    os.path.join(BASE_DIR, "2_path_plan.sh"),
+    os.path.join(BASE_DIR, "3_path_run.sh"),
+    os.path.join(BASE_DIR, "4_target_detect.sh"),
 ]
 
 LABELS = [
@@ -18,26 +19,34 @@ LABELS = [
     "4. 启动识别",
 ]
 
-def run_in_new_terminal(script):
-    """在新 gnome-terminal 中执行脚本"""
-    # 如果脚本没执行权限先加
+
+def run_script(script):
     os.chmod(script, 0o755)
-    # gnome-terminal 保持窗口不退出
-    cmd = [
-        "gnome-terminal",
-        "--",
-        "bash", "-c",
-        f"{script}; echo '按回车关闭...'; read"
-    ]
-    subprocess.Popen(cmd)
+    log_dir = os.path.join(BASE_DIR, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    name = os.path.basename(script)
+    log_path = os.path.join(log_dir, f"launcher_{name}.log")
+    with open(log_path, "w") as log:
+        subprocess.Popen(
+            ["bash", script],
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            cwd=BASE_DIR,
+            env=os.environ.copy(),
+        )
+
 
 root = tk.Tk()
 root.title("Go2 脚本启动器")
 root.geometry("300x280")
 
-for idx, (label, script) in enumerate(zip(LABELS, SCRIPTS)):
-    btn = tk.Button(root, text=label, font=("Arial", 14),
-                    command=lambda s=script: run_in_new_terminal(s))
-    btn.pack(fill='both', expand=True, padx=20, pady=10)
+for label, script in zip(LABELS, SCRIPTS):
+    btn = tk.Button(
+        root,
+        text=label,
+        font=("Arial", 14),
+        command=lambda s=script: run_script(s),
+    )
+    btn.pack(fill="both", expand=True, padx=20, pady=10)
 
 root.mainloop()

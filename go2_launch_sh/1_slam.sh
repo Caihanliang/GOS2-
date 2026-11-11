@@ -1,8 +1,11 @@
 #!/bin/bash
-cd ~/go2_ros2_ws
+set -e
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# Source the workspace
-source install/setup.bash
+source /opt/ros/foxy/setup.bash
+source "$ROOT/unitree_ros2/cyclonedds_ws/install/setup.bash"
+source "$ROOT/go2_ros2_ws/install/setup.bash"
+export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
 
-# Launch the robot
+cd "$ROOT/go2_ros2_ws"
 ros2 launch go2_core go2_startup.launch.py
